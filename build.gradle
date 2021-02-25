@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.riskrieg'
-version '1.1'
+version '1.1b'
 
 jar {
     sourceCompatibility = JavaVersion.VERSION_14
@@ -16,10 +16,12 @@ jar {
 
 repositories {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
     implementation 'com.formdev:flatlaf:1.0'
+    implementation 'com.github.Dansoftowner:jSystemThemeDetector:2.1'
     implementation 'com.google.code.gson:gson:2.8.6'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
