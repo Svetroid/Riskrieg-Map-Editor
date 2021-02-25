@@ -51,12 +51,12 @@ public class Editor extends JFrame {
   private JPanel imagePanel;
   private JPanel sidePanel;
 
-  private MapDataModel dataModel;
+  private Deque<Point> activePoints = new ArrayDeque<>(); // TODO: Model this.
+  private final MapDataModel dataModel;
 
   private final DefaultListModel<Territory> territoryListModel;
   private JList<Territory> territoryJList;
 
-  private Deque<Point> activePoints = new ArrayDeque<>(); // TODO: Model this.
 
   private static final int SIDE_BAR_WIDTH_PX = 100;
   private static final int WINDOW_WIDTH = 1280 + SIDE_BAR_WIDTH_PX;
@@ -358,11 +358,11 @@ public class Editor extends JFrame {
             if (dataModel.getSelected().isPresent()) {
               if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR) || ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(t -> dataModel.selectNeighbor(t));
+                  getTerritory(cursor).ifPresent(dataModel::selectNeighbor);
                 }
               } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.NEIGHBOR_SELECT_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(t -> dataModel.deselectNeighbor(t));
+                  getTerritory(cursor).ifPresent(dataModel::deselectNeighbor);
                 }
               } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SELECT_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
@@ -372,11 +372,11 @@ public class Editor extends JFrame {
             } else {
               if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(t -> dataModel.select(t));
+                  getTerritory(cursor).ifPresent(dataModel::select);
                 }
               } else if (dataModel.getSelectedNeighbors().isEmpty() && ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(t -> dataModel.select(t));
+                  getTerritory(cursor).ifPresent(dataModel::select);
                 }
               }
             }
