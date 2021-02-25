@@ -1,9 +1,6 @@
 package com.riskrieg.mapeditor;
 
-import com.riskrieg.mapeditor.map.graph.Edge;
-import com.riskrieg.mapeditor.map.graph.MutableGraph;
 import com.riskrieg.mapeditor.map.territory.Territory;
-import com.riskrieg.mapeditor.util.GsonUtil;
 import com.riskrieg.mapeditor.util.ImageUtil;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -20,7 +17,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -48,27 +44,26 @@ public class Editor extends JFrame {
   private BufferedImage base;
   private BufferedImage text;
 
+  private String mapName;
+
   private EditMode editMode;
 
   private JPanel imagePanel;
   private JPanel sidePanel;
 
+  private MapDataModel dataModel;
+
   private final DefaultListModel<Territory> territoryListModel;
   private JList<Territory> territoryJList;
 
-  private Deque<Point> activePoints = new ArrayDeque<>();
+  private Deque<Point> activePoints = new ArrayDeque<>(); // TODO: Model this.
 
-  private Territory neighborModeSelected;
-  private Set<Territory> neighbors = new HashSet<>();
-
-  private MutableGraph<Territory> graph = new MutableGraph<>();
-  private Set<Territory> finishedTerritories = new HashSet<>();
-
-  private static int SIDE_BAR_WIDTH_PX = 100;
-  private static int WINDOW_WIDTH = 1280 + SIDE_BAR_WIDTH_PX;
-  private static int WINDOW_HEIGHT = 720 + (int) (((float) 720 / WINDOW_WIDTH) * SIDE_BAR_WIDTH_PX);
+  private static final int SIDE_BAR_WIDTH_PX = 100;
+  private static final int WINDOW_WIDTH = 1280 + SIDE_BAR_WIDTH_PX;
+  private static final int WINDOW_HEIGHT = 720 + (int) (((float) 720 / WINDOW_WIDTH) * SIDE_BAR_WIDTH_PX);
 
   public Editor() {
+    dataModel = new MapDataModel();
     territoryListModel = new DefaultListModel<>();
     territoryJList = new JList<>(territoryListModel);
     territoryJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -93,6 +88,7 @@ public class Editor extends JFrame {
   }
 
   public Editor(String mapName) {
+    dataModel = new MapDataModel();
     territoryListModel = new DefaultListModel<>();
     territoryJList = new JList<>(territoryListModel);
     territoryJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -145,6 +141,8 @@ public class Editor extends JFrame {
         int returnVal = chooser.showOpenDialog(null);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
           try {
+            // TODO: Map name
+            mapName = chooser.getSelectedFile().getName().replace(".png", "").replace("-base", "");
             base = ImageIO.read(chooser.getSelectedFile());
             rebuildMapPanel();
           } catch (IOException ex) {
@@ -187,30 +185,40 @@ public class Editor extends JFrame {
         JTextArea fileNameArea = new JTextArea();
         fileNameArea.setEditable(true);
 
-        String fileName = JOptionPane.showInputDialog(fileNameArea, "Enter map name:");
-        if (fileName == null || fileName.isEmpty() || graph == null || base == null || text == null) {
+        String fileName = JOptionPane.showInputDialog(fileNameArea, "Enter map name:", mapName);
+        if (fileName == null || fileName.isEmpty() || base == null || text == null) {
           JOptionPane.showMessageDialog(null, "Nothing to export.");
           return;
         }
-        GsonUtil.saveToJson(graph, fileName + ".json");
-        JOptionPane.showMessageDialog(null, "Graph file saved in current directory.");
+        if (dataModel.save(fileName)) {
+          JOptionPane.showMessageDialog(null, "Graph file saved in current directory.");
+        } else {
+          JOptionPane.showMessageDialog(null, "Error saving map file.");
+        }
       }
     });
 
     JMenu menuEdit = new JMenu("Edit");
-    JMenuItem modeAddTerritory = new JMenuItem(new AbstractAction("Add Territory Mode") {
+    JMenuItem modeAddTerritory = new JMenuItem(new AbstractAction("Mode: Add Territory") {
       @Override
       public void actionPerformed(ActionEvent e) {
         Editor.this.editMode = EditMode.ADD_TERRITORY;
+        Editor.this.dataModel.clearSelection();
         rebuildSidePanel();
+        rebuildMapPanel();
       }
     });
 
-    JMenuItem modeAddNeighbors = new JMenuItem(new AbstractAction("Add Neighbor Mode") {
+    JMenuItem modeAddNeighbors = new JMenuItem(new AbstractAction("Mode: Add Neighbor") {
       @Override
       public void actionPerformed(ActionEvent e) {
         Editor.this.editMode = EditMode.ADD_NEIGHBORS;
+        for (Point point : Editor.this.activePoints) {
+          ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
+        }
+        Editor.this.activePoints.clear();
         rebuildSidePanel();
+        rebuildMapPanel();
       }
     });
 
@@ -260,30 +268,10 @@ public class Editor extends JFrame {
     JLabel baseLabel = new JLabel();
     baseLabel.setLayout(new BorderLayout());
 
-    for (int i = 0; i < territoryListModel.size(); i++) { // Color in all submitted territories.
-      Territory territory = territoryListModel.get(i);
-      for (Point point : territory.getSeedPoints()) {
-        ImageUtil.bucketFill(base, point, Constants.SUBMITTED_COLOR);
-      }
-    }
-
-    for (Territory territory : finishedTerritories) {
-      for (Point point : territory.getSeedPoints()) {
-        ImageUtil.bucketFill(base, point, Constants.FINISHED_COLOR);
-      }
-    }
-
-    for (Territory territory : neighbors) {
-      for (Point point : territory.getSeedPoints()) {
-        ImageUtil.bucketFill(base, point, Constants.NEIGHBOR_SELECT_COLOR);
-      }
-    }
-
-    if (neighborModeSelected != null) {
-      for (Point point : neighborModeSelected.getSeedPoints()) {
-        ImageUtil.bucketFill(base, point, Constants.SELECT_COLOR);
-      }
-    }
+    dataModel.getSubmitted().forEach(submitted -> submitted.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.SUBMITTED_COLOR)));
+    dataModel.getFinished().forEach(finished -> finished.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.FINISHED_COLOR)));
+    dataModel.getSelectedNeighbors().forEach(sn -> sn.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.NEIGHBOR_SELECT_COLOR)));
+    dataModel.getSelected().ifPresent(selected -> selected.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.SELECT_COLOR)));
 
     base = ImageUtil.convert(base, 2);
     baseLabel.setIcon(new ImageIcon(base));
@@ -367,44 +355,33 @@ public class Editor extends JFrame {
             }
           }
           case ADD_NEIGHBORS -> {
-            if (neighborModeSelected != null) {
-              // Only need to allow clicking FINISHED_COLOR if I add one-way neighbors. Atm it's sometimes necessary.
+            if (dataModel.getSelected().isPresent()) {
               if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR) || ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  Territory t = getTerritory(cursor);
-                  if (t != null && !t.equals(neighborModeSelected)) {
-                    neighbors.add(t);
-                  }
+                  getTerritory(cursor).ifPresent(t -> dataModel.selectNeighbor(t));
                 }
               } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.NEIGHBOR_SELECT_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  Territory t = getTerritory(cursor);
-                  neighbors.remove(t);
+                  getTerritory(cursor).ifPresent(t -> dataModel.deselectNeighbor(t));
                 }
               } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SELECT_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  neighborModeSelected = null;
-                  neighbors = new HashSet<>();
+                  dataModel.clearSelection();
                 }
               }
             } else {
               if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  neighborModeSelected = getTerritory(cursor);
-                  neighbors.addAll(graph.getNeighbors(neighborModeSelected));
+                  getTerritory(cursor).ifPresent(t -> dataModel.select(t));
                 }
-              } else if (neighborModeSelected == null && neighbors.isEmpty() && ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
+              } else if (dataModel.getSelectedNeighbors().isEmpty() && ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                  neighborModeSelected = getTerritory(cursor);
-                  if (neighborModeSelected != null) {
-                    neighbors.addAll(graph.getNeighbors(neighborModeSelected));
-                  }
+                  getTerritory(cursor).ifPresent(t -> dataModel.select(t));
                 }
               }
             }
           }
-          case NO_EDIT -> {
-          }
+          case NO_EDIT -> {}
         }
         rebuildMapPanel();
       }
@@ -419,14 +396,15 @@ public class Editor extends JFrame {
         nameArea.setEditable(true);
 
         String name = JOptionPane.showInputDialog(nameArea, "Enter territory name:");
-        // TODO: Ask for territory name, get set of seedpoints to instantiate with
         if (name == null || name.isEmpty()) {
           return;
         }
         if (activePoints.isEmpty()) {
           return;
         }
-        territoryListModel.addElement(new Territory(name, new HashSet<>(activePoints)));
+        Territory newlySubmitted = new Territory(name, new HashSet<>(activePoints));
+        territoryListModel.addElement(newlySubmitted);
+        dataModel.submitTerritory(newlySubmitted);
         activePoints.clear();
         rebuildMapPanel();
       }
@@ -443,6 +421,7 @@ public class Editor extends JFrame {
             ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
           }
           territoryListModel.removeElement(selected);
+          dataModel.removeSubmittedTerritory(selected);
           rebuildMapPanel();
         }
       }
@@ -453,33 +432,8 @@ public class Editor extends JFrame {
     return new MouseInputAdapter() {
       @Override
       public void mouseClicked(MouseEvent e) {
-        if (neighborModeSelected != null && neighbors.size() > 0) {
-          Optional<Point> point = neighborModeSelected.getSeedPoints().stream().findFirst();
-          if (point.isPresent()) {
-            Territory done = getTerritory(point.get());
-            Set<Territory> doneNeighbors = new HashSet<>(neighbors);
-
-            if (graph.getNodes().contains(done) && finishedTerritories.contains(done)) {
-              Set<Edge<Territory>> edgesToRemove = new HashSet<>();
-              Set<Territory> currentNeighbors = graph.getNeighbors(done);
-              currentNeighbors.removeAll(doneNeighbors);
-              for (Territory oldNeighbor : currentNeighbors) {
-                for (Edge<Territory> edge : graph.getEdges()) {
-                  if ((edge.getSource().equals(done) && edge.getTarget().equals(oldNeighbor)) || (edge.getTarget().equals(done) && edge.getSource().equals(oldNeighbor))) {
-                    edgesToRemove.add(edge);
-                  }
-                }
-              }
-              graph.removeEdges(edgesToRemove);
-            }
-
-            finishedTerritories.add(done);
-            for (Territory t : doneNeighbors) {
-              graph.putEdge(done, t);
-            }
-            neighborModeSelected = null;
-            neighbors = new HashSet<>();
-          }
+        if (dataModel.getSelected().isPresent() && !dataModel.getSelectedNeighbors().isEmpty()) {
+          dataModel.submitNeighbors();
         }
         rebuildMapPanel();
       }
@@ -488,15 +442,14 @@ public class Editor extends JFrame {
 
   // Utility
 
-  private Territory getTerritory(Point point) {
+  private Optional<Territory> getTerritory(Point point) {
     Point rootPoint = ImageUtil.getRootPixel(base, point);
-    for (int i = 0; i < territoryListModel.size(); i++) {
-      Territory territory = territoryListModel.get(i);
+    for (Territory territory : dataModel.getSubmitted()) {
       if (territory.getSeedPoints().contains(rootPoint)) {
-        return territory;
+        return Optional.of(territory);
       }
     }
-    return null;
+    return Optional.empty();
   }
 
 }

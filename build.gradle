@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.riskrieg'
-version '1.0'
+version '1.1'
 
 jar {
     manifest {
@@ -17,6 +17,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.formdev:flatlaf:1.0'
     implementation 'com.google.code.gson:gson:2.8.6'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'

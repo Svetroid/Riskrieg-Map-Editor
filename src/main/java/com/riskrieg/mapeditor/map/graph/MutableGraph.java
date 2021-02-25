@@ -27,6 +27,17 @@ public class MutableGraph<T> extends Graph<T> {
     return edges.add(new Edge<>(source, target));
   }
 
+  public boolean removeNode(T node) {
+    Set<Edge<T>> edgesToRemove = new HashSet<>();
+    for (Edge<T> edge : edges) {
+      if ((edge.getSource().equals(node) || edge.getTarget().equals(node))) {
+        edgesToRemove.add(edge);
+      }
+    }
+    removeEdges(edgesToRemove);
+    return nodes.remove(node);
+  }
+
   public boolean removeEdges(Set<Edge<T>> edgeSet) {
     return edges.removeAll(edgeSet);
   }
