@@ -202,23 +202,31 @@ public class Editor extends JFrame {
     JMenuItem modeAddTerritory = new JMenuItem(new AbstractAction("Mode: Add Territory") {
       @Override
       public void actionPerformed(ActionEvent e) {
-        Editor.this.editMode = EditMode.ADD_TERRITORY;
-        Editor.this.dataModel.clearSelection();
-        rebuildSidePanel();
-        rebuildMapPanel();
+        if (base != null && text != null) {
+          Editor.this.editMode = EditMode.ADD_TERRITORY;
+          Editor.this.dataModel.clearSelection();
+          rebuildSidePanel();
+          rebuildMapPanel();
+        } else {
+          JOptionPane.showMessageDialog(null, "You need to import a base map layer and a text map layer before switching to an editing mode.");
+        }
       }
     });
 
     JMenuItem modeAddNeighbors = new JMenuItem(new AbstractAction("Mode: Add Neighbor") {
       @Override
       public void actionPerformed(ActionEvent e) {
-        Editor.this.editMode = EditMode.ADD_NEIGHBORS;
-        for (Point point : Editor.this.activePoints) {
-          ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
+        if (base != null && text != null) {
+          Editor.this.editMode = EditMode.ADD_NEIGHBORS;
+          for (Point point : Editor.this.activePoints) {
+            ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
+          }
+          Editor.this.activePoints.clear();
+          rebuildSidePanel();
+          rebuildMapPanel();
+        } else {
+          JOptionPane.showMessageDialog(null, "You need to import a base map layer and a text map layer before switching to an editing mode.");
         }
-        Editor.this.activePoints.clear();
-        rebuildSidePanel();
-        rebuildMapPanel();
       }
     });
 
@@ -292,7 +300,10 @@ public class Editor extends JFrame {
     sidePanel.removeAll();
 
     JPanel buttonArea = new JPanel();
-    buttonArea.setLayout(new GridLayout(2, 1));
+    GridLayout buttonAreaLayout = new GridLayout(2, 1);
+    buttonAreaLayout.setVgap(4);
+    buttonArea.setLayout(buttonAreaLayout);
+    buttonArea.setBorder(BorderFactory.createEmptyBorder(2, 2, 4, 2));
 
     switch (editMode) {
       case NO_EDIT -> {
@@ -307,12 +318,12 @@ public class Editor extends JFrame {
         addTerritoryButton.addMouseListener(addTerritoryButtonListener());
 
         JButton deleteTerritoryButton = new JButton("-");
-        addTerritoryButton.setPreferredSize(new Dimension(10, 25));
+        deleteTerritoryButton.setPreferredSize(new Dimension(10, 25));
         buttonArea.add(deleteTerritoryButton);
         deleteTerritoryButton.addMouseListener(removeTerritoryButtonListener());
       }
       case ADD_NEIGHBORS -> {
-        sidePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2), "Submit Neighbors", TitledBorder.CENTER, TitledBorder.CENTER));
+        sidePanel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2), "Neighbor Select", TitledBorder.CENTER, TitledBorder.CENTER));
 
         JButton submitNeighborButton = new JButton("Submit");
         submitNeighborButton.setPreferredSize(new Dimension(10, 25));
@@ -381,7 +392,8 @@ public class Editor extends JFrame {
               }
             }
           }
-          case NO_EDIT -> {}
+          case NO_EDIT -> {
+          }
         }
         rebuildMapPanel();
       }
@@ -397,9 +409,11 @@ public class Editor extends JFrame {
 
         String name = JOptionPane.showInputDialog(nameArea, "Enter territory name:");
         if (name == null || name.isEmpty()) {
+          JOptionPane.showMessageDialog(null, "You did not enter a name so no changes were made.");
           return;
         }
         if (activePoints.isEmpty()) {
+          JOptionPane.showMessageDialog(null, "You need to select a region or set of regions to constitute a territory.");
           return;
         }
         Territory newlySubmitted = new Territory(name, new HashSet<>(activePoints));
@@ -416,14 +430,16 @@ public class Editor extends JFrame {
       @Override
       public void mouseClicked(MouseEvent e) {
         Territory selected = territoryJList.getSelectedValue();
-        if (selected != null) {
-          for (Point point : selected.getSeedPoints()) {
-            ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
-          }
-          territoryListModel.removeElement(selected);
-          dataModel.removeSubmittedTerritory(selected);
-          rebuildMapPanel();
+        if (selected == null) {
+          JOptionPane.showMessageDialog(null, "You need to select a territory to remove from the list.");
+          return;
         }
+        for (Point point : selected.getSeedPoints()) {
+          ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
+        }
+        territoryListModel.removeElement(selected);
+        dataModel.removeSubmittedTerritory(selected);
+        rebuildMapPanel();
       }
     };
   }
