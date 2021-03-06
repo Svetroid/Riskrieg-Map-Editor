@@ -17,12 +17,16 @@ jar {
 repositories {
     mavenCentral()
     maven { url 'https://jitpack.io' }
+    jcenter()
 }
 
 dependencies {
     implementation 'com.formdev:flatlaf:1.0'
     implementation 'com.github.Dansoftowner:jSystemThemeDetector:2.1'
     implementation 'com.google.code.gson:gson:2.8.6'
+    implementation 'org.jgrapht:jgrapht-core:1.5.0'
+    implementation 'org.jgrapht:jgrapht-io:1.5.0'
+//    implementation("com.google.guava:guava:30.1-jre")
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'

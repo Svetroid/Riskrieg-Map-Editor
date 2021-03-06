@@ -1,5 +1,7 @@
 package com.riskrieg.mapeditor.util;
 
+import com.riskrieg.mapeditor.fill.Fill;
+import com.riskrieg.mapeditor.fill.MilazzoFill;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -54,24 +56,9 @@ public class ImageUtil {
   }
 
   public static BufferedImage bucketFill(BufferedImage image, Point point, Color newColor) {
-    flood(image, point.x, point.y, image.getRGB(point.x, point.y), newColor.getRGB());
-    return image;
-  }
-
-  private static void flood(BufferedImage image, int x, int y, int oldColor, int newColor) {
-    boolean[][] hits = new boolean[image.getHeight()][image.getWidth()];
-    Queue<Point> queue = new LinkedList<>();
-    queue.add(new Point(x, y));
-
-    while (!queue.isEmpty()) {
-      Point p = queue.remove();
-      if (floodDo(image, hits, p.x, p.y, oldColor, newColor)) {
-        queue.add(new Point(p.x - 1, p.y));
-        queue.add(new Point(p.x + 1, p.y));
-        queue.add(new Point(p.x, p.y - 1));
-        queue.add(new Point(p.x, p.y + 1));
-      }
-    }
+    Fill fill = new MilazzoFill(image, new Color(image.getRGB(point.x, point.y)), newColor);
+    fill.fill(point);
+    return fill.getImage();
   }
 
   private static boolean floodDo(BufferedImage image, boolean[][] hits, int x, int y, int oldColor, int newColor) {

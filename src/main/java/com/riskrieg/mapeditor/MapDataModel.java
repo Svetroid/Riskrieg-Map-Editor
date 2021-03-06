@@ -1,30 +1,33 @@
 package com.riskrieg.mapeditor;
 
-import com.riskrieg.mapeditor.map.graph.Edge;
-import com.riskrieg.mapeditor.map.graph.MutableGraph;
-import com.riskrieg.mapeditor.map.territory.Territory;
+import com.riskrieg.mapeditor.map.Edge;
+import com.riskrieg.mapeditor.map.MapData;
+import com.riskrieg.mapeditor.map.Territory;
 import com.riskrieg.mapeditor.util.GsonUtil;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import org.jgrapht.Graph;
+import org.jgrapht.Graphs;
+import org.jgrapht.graph.SimpleGraph;
 
 public class MapDataModel {
 
-  private MutableGraph<Territory> graph;
+  private Graph<Territory, Edge> graph;
 
   private Territory selected;
   private Set<Territory> selectedNeighbors;
   private Set<Territory> finishedTerritories;
 
   public MapDataModel() {
-    graph = new MutableGraph<>();
+    graph = new SimpleGraph<>(Edge.class);
     selectedNeighbors = new HashSet<>();
     finishedTerritories = new HashSet<>();
   }
 
   public boolean save(String fileName) {
     try {
-      GsonUtil.saveToJson(graph, fileName + ".json");
+      GsonUtil.saveToJson(new MapData(graph), fileName + ".json");
       return true;
     } catch (Exception e) {
       return false;
@@ -32,7 +35,7 @@ public class MapDataModel {
   }
 
   public Set<Territory> getSubmitted() {
-    return graph.getNodes();
+    return graph.vertexSet();
   }
 
   public Set<Territory> getFinished() {
@@ -50,7 +53,8 @@ public class MapDataModel {
   public void select(Territory selected) {
     this.selected = selected;
     if (selected != null) {
-      selectedNeighbors.addAll(graph.getNeighbors(selected));
+      selectedNeighbors.addAll(Graphs.neighborListOf(graph, selected));
+//      selectedNeighbors.addAll(graph.getNeighbors(selected));
     }
   }
 
@@ -71,33 +75,34 @@ public class MapDataModel {
   }
 
   public void submitTerritory(Territory territory) {
-    graph.addNode(territory);
+    graph.addVertex(territory);
   }
 
   public boolean removeSubmittedTerritory(Territory territory) {
     finishedTerritories.remove(territory);
-    return graph.removeNode(territory);
+    return graph.removeVertex(territory);
   }
 
   public void submitNeighbors() {
     // Remove deselected neighbors.
-    if (graph.getNodes().contains(selected)) {
-      Set<Edge<Territory>> edgesToRemove = new HashSet<>();
-      Set<Territory> currentNeighbors = graph.getNeighbors(selected);
+    if (graph.containsVertex(selected)) {
+      Set<Edge> edgesToRemove = new HashSet<>();
+      Set<Territory> currentNeighbors = Graphs.neighborSetOf(graph, selected);// graph.getNeighbors(selected);
       currentNeighbors.removeAll(selectedNeighbors); // This is the set of all deselected neighboring territories.
       for (Territory deselectedNeighbor : currentNeighbors) {
-        for (Edge<Territory> edge : graph.getEdges()) {
-          if (edge.equals(new Edge<>(selected, deselectedNeighbor))) {
+        for (Edge edge : graph.edgeSet()) {
+          if (edge.equals(graph.getEdge(selected, deselectedNeighbor))) {
             edgesToRemove.add(edge);
           }
         }
       }
-      graph.removeEdges(edgesToRemove);
+      graph.removeAllEdges(edgesToRemove);
     }
 
     // Add all selected neighbors in case any new ones were added.
     for (Territory selectedNeighbor : selectedNeighbors) {
-      graph.putEdge(selected, selectedNeighbor);
+      Edge edge = new Edge(selected, selectedNeighbor);
+      graph.addEdge(selected, selectedNeighbor, edge);
     }
     finishedTerritories.add(selected);
     clearSelection();

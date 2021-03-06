@@ -1,6 +1,6 @@
 package com.riskrieg.mapeditor;
 
-import com.riskrieg.mapeditor.map.territory.Territory;
+import com.riskrieg.mapeditor.map.Territory;
 import com.riskrieg.mapeditor.util.ImageUtil;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -13,6 +13,8 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
@@ -276,10 +278,10 @@ public class Editor extends JFrame {
     JLabel baseLabel = new JLabel();
     baseLabel.setLayout(new BorderLayout());
 
-    dataModel.getSubmitted().forEach(submitted -> submitted.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.SUBMITTED_COLOR)));
-    dataModel.getFinished().forEach(finished -> finished.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.FINISHED_COLOR)));
-    dataModel.getSelectedNeighbors().forEach(sn -> sn.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.NEIGHBOR_SELECT_COLOR)));
-    dataModel.getSelected().ifPresent(selected -> selected.getSeedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.SELECT_COLOR)));
+    dataModel.getSubmitted().forEach(submitted -> submitted.seedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.SUBMITTED_COLOR)));
+    dataModel.getFinished().forEach(finished -> finished.seedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.FINISHED_COLOR)));
+    dataModel.getSelectedNeighbors().forEach(sn -> sn.seedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.NEIGHBOR_SELECT_COLOR)));
+    dataModel.getSelected().ifPresent(selected -> selected.seedPoints().forEach(sp -> ImageUtil.bucketFill(base, sp.getLocation(), Constants.SELECT_COLOR)));
 
     base = ImageUtil.convert(base, 2);
     baseLabel.setIcon(new ImageIcon(base));
@@ -434,7 +436,7 @@ public class Editor extends JFrame {
           JOptionPane.showMessageDialog(null, "You need to select a territory to remove from the list.");
           return;
         }
-        for (Point point : selected.getSeedPoints()) {
+        for (Point point : selected.seedPoints()) {
           ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
         }
         territoryListModel.removeElement(selected);
@@ -461,7 +463,7 @@ public class Editor extends JFrame {
   private Optional<Territory> getTerritory(Point point) {
     Point rootPoint = ImageUtil.getRootPixel(base, point);
     for (Territory territory : dataModel.getSubmitted()) {
-      if (territory.getSeedPoints().contains(rootPoint)) {
+      if (territory.seedPoints().contains(rootPoint)) {
         return Optional.of(territory);
       }
     }
