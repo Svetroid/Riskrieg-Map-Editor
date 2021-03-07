@@ -22,6 +22,7 @@ public class FloodFill implements Fill {
     this.imgHeight = image.getHeight();
   }
 
+  @Override
   public BufferedImage getImage() {
     return image;
   }

@@ -8,13 +8,12 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridLayout;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
@@ -350,110 +349,162 @@ public class Editor extends JFrame {
 
   private MouseInputAdapter mapClickListener() {
     return new MouseInputAdapter() {
+
+      boolean pressed = false;
+
       @Override
-      public void mouseClicked(MouseEvent e) {
-        Point cursor = new Point(e.getX(), e.getY());
-        switch (editMode) {
-          case ADD_TERRITORY -> {
-            if (ImageUtil.getPixelColor(base, cursor).equals(Constants.TERRITORY_COLOR)) {
-              if (e.getButton() == MouseEvent.BUTTON1) {
-                activePoints.add(ImageUtil.getRootPixel(base, cursor));
-                ImageUtil.bucketFill(base, cursor, Constants.SELECT_COLOR);
+      public void mousePressed(MouseEvent e) {
+        pressed = true;
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        if (pressed) {
+          if (new Rectangle(e.getComponent().getLocationOnScreen(), e.getComponent().getSize()).contains(e.getLocationOnScreen())) {
+            pressed = false;
+            Point cursor = new Point(e.getX(), e.getY());
+            switch (editMode) {
+              case ADD_TERRITORY -> {
+                if (ImageUtil.getPixelColor(base, cursor).equals(Constants.TERRITORY_COLOR)) {
+                  if (e.getButton() == MouseEvent.BUTTON1) {
+                    activePoints.add(ImageUtil.getRootPixel(base, cursor));
+                    ImageUtil.bucketFill(base, cursor, Constants.SELECT_COLOR);
+                  }
+                } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SELECT_COLOR)) {
+                  if (e.getButton() == MouseEvent.BUTTON1) {
+                    activePoints.remove(ImageUtil.getRootPixel(base, cursor));
+                    ImageUtil.bucketFill(base, cursor, Constants.TERRITORY_COLOR);
+                  }
+                }
               }
-            } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SELECT_COLOR)) {
-              if (e.getButton() == MouseEvent.BUTTON1) {
-                activePoints.remove(ImageUtil.getRootPixel(base, cursor));
-                ImageUtil.bucketFill(base, cursor, Constants.TERRITORY_COLOR);
+              case ADD_NEIGHBORS -> {
+                if (dataModel.getSelected().isPresent()) {
+                  if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR) || ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
+                    if (e.getButton() == MouseEvent.BUTTON1) {
+                      getTerritory(cursor).ifPresent(dataModel::selectNeighbor);
+                    }
+                  } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.NEIGHBOR_SELECT_COLOR)) {
+                    if (e.getButton() == MouseEvent.BUTTON1) {
+                      getTerritory(cursor).ifPresent(dataModel::deselectNeighbor);
+                    }
+                  } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SELECT_COLOR)) {
+                    if (e.getButton() == MouseEvent.BUTTON1) {
+                      dataModel.clearSelection();
+                    }
+                  }
+                } else {
+                  if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR)) {
+                    if (e.getButton() == MouseEvent.BUTTON1) {
+                      getTerritory(cursor).ifPresent(dataModel::select);
+                    }
+                  } else if (dataModel.getSelectedNeighbors().isEmpty() && ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
+                    if (e.getButton() == MouseEvent.BUTTON1) {
+                      getTerritory(cursor).ifPresent(dataModel::select);
+                    }
+                  }
+                }
+              }
+              case NO_EDIT -> {
               }
             }
-          }
-          case ADD_NEIGHBORS -> {
-            if (dataModel.getSelected().isPresent()) {
-              if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR) || ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(dataModel::selectNeighbor);
-                }
-              } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.NEIGHBOR_SELECT_COLOR)) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(dataModel::deselectNeighbor);
-                }
-              } else if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SELECT_COLOR)) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                  dataModel.clearSelection();
-                }
-              }
-            } else {
-              if (ImageUtil.getPixelColor(base, cursor).equals(Constants.SUBMITTED_COLOR)) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(dataModel::select);
-                }
-              } else if (dataModel.getSelectedNeighbors().isEmpty() && ImageUtil.getPixelColor(base, cursor).equals(Constants.FINISHED_COLOR)) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                  getTerritory(cursor).ifPresent(dataModel::select);
-                }
-              }
-            }
-          }
-          case NO_EDIT -> {
+            rebuildMapPanel();
           }
         }
-        rebuildMapPanel();
       }
     };
   }
 
   private MouseInputAdapter addTerritoryButtonListener() {
     return new MouseInputAdapter() {
-      @Override
-      public void mouseClicked(MouseEvent e) {
-        JTextArea nameArea = new JTextArea();
-        nameArea.setEditable(true);
 
-        String name = JOptionPane.showInputDialog(nameArea, "Enter territory name:");
-        if (name == null || name.isEmpty()) {
-          JOptionPane.showMessageDialog(null, "You did not enter a name so no changes were made.");
-          return;
+      boolean pressed = false;
+
+      @Override
+      public void mousePressed(MouseEvent e) {
+        pressed = true;
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        if (pressed) {
+          if (new Rectangle(e.getComponent().getLocationOnScreen(), e.getComponent().getSize()).contains(e.getLocationOnScreen())) {
+            pressed = false;
+            JTextArea nameArea = new JTextArea();
+            nameArea.setEditable(true);
+
+            String name = JOptionPane.showInputDialog(nameArea, "Enter territory name:");
+            if (name == null || name.isEmpty()) {
+              JOptionPane.showMessageDialog(null, "You did not enter a name so no changes were made.");
+              return;
+            }
+            if (activePoints.isEmpty()) {
+              JOptionPane.showMessageDialog(null, "You need to select a region or set of regions to constitute a territory.");
+              return;
+            }
+            Territory newlySubmitted = new Territory(name, new HashSet<>(activePoints));
+            territoryListModel.addElement(newlySubmitted);
+            dataModel.submitTerritory(newlySubmitted);
+            activePoints.clear();
+            rebuildMapPanel();
+          }
         }
-        if (activePoints.isEmpty()) {
-          JOptionPane.showMessageDialog(null, "You need to select a region or set of regions to constitute a territory.");
-          return;
-        }
-        Territory newlySubmitted = new Territory(name, new HashSet<>(activePoints));
-        territoryListModel.addElement(newlySubmitted);
-        dataModel.submitTerritory(newlySubmitted);
-        activePoints.clear();
-        rebuildMapPanel();
       }
     };
   }
 
   private MouseInputAdapter removeTerritoryButtonListener() {
     return new MouseInputAdapter() {
+
+      boolean pressed = false;
+
       @Override
-      public void mouseClicked(MouseEvent e) {
-        Territory selected = territoryJList.getSelectedValue();
-        if (selected == null) {
-          JOptionPane.showMessageDialog(null, "You need to select a territory to remove from the list.");
-          return;
+      public void mousePressed(MouseEvent e) {
+        pressed = true;
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        if (pressed) {
+          if (new Rectangle(e.getComponent().getLocationOnScreen(), e.getComponent().getSize()).contains(e.getLocationOnScreen())) {
+            pressed = false;
+            Territory selected = territoryJList.getSelectedValue();
+            if (selected == null) {
+              JOptionPane.showMessageDialog(null, "You need to select a territory to remove from the list.");
+              return;
+            }
+            for (Point point : selected.seedPoints()) {
+              ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
+            }
+            territoryListModel.removeElement(selected);
+            dataModel.removeSubmittedTerritory(selected);
+            rebuildMapPanel();
+          }
         }
-        for (Point point : selected.seedPoints()) {
-          ImageUtil.bucketFill(base, point, Constants.TERRITORY_COLOR);
-        }
-        territoryListModel.removeElement(selected);
-        dataModel.removeSubmittedTerritory(selected);
-        rebuildMapPanel();
       }
     };
   }
 
   private MouseInputAdapter submitNeighborsButtonListener() {
     return new MouseInputAdapter() {
+
+      boolean pressed = false;
+
       @Override
-      public void mouseClicked(MouseEvent e) {
-        if (dataModel.getSelected().isPresent() && !dataModel.getSelectedNeighbors().isEmpty()) {
-          dataModel.submitNeighbors();
+      public void mousePressed(MouseEvent e) {
+        pressed = true;
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        if (pressed) {
+          if (new Rectangle(e.getComponent().getLocationOnScreen(), e.getComponent().getSize()).contains(e.getLocationOnScreen())) {
+            pressed = false;
+            if (dataModel.getSelected().isPresent() && !dataModel.getSelectedNeighbors().isEmpty()) {
+              dataModel.submitNeighbors();
+            }
+            rebuildMapPanel();
+          }
         }
-        rebuildMapPanel();
       }
     };
   }
