@@ -1,21 +1,28 @@
-package com.riskrieg.mapeditor.map;
+package com.riskrieg.mapeditor.map.graph;
 
 import java.awt.Point;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-public class Territory implements Comparable<Territory> {
+public class Territory implements Comparable<Territory> { // TODO: Convert to Record when Java 16 comes out
 
   private final String name;
   private final Set<Point> seedPoints;
 
   public Territory(String name, Set<Point> seedPoints) {
+    Objects.requireNonNull(name);
+    Objects.requireNonNull(seedPoints);
+    if (seedPoints.isEmpty()) {
+      throw new IllegalStateException("seedPoints must not be empty");
+    }
     this.name = name;
     this.seedPoints = seedPoints;
   }
 
   public Territory(String name, Point seedPoint) {
+    Objects.requireNonNull(name);
+    Objects.requireNonNull(seedPoint);
     this.name = name;
     this.seedPoints = new HashSet<>();
     this.seedPoints.add(seedPoint);

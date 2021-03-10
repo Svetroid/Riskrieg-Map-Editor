@@ -1,31 +1,40 @@
 package com.riskrieg.mapeditor.map;
 
-public class MapInfo {
+
+import com.riskrieg.mapeditor.map.alignment.InterfaceAlignment;
+
+public class MapInfo { // TODO: Convert to Record when Java 16 comes out (?)
 
   private final String name;
   private final String displayName;
   private final String author;
+  private final InterfaceAlignment alignment;
   private MapStatus status;
 
-  public MapInfo(String name, String displayName, String author) {
+  public MapInfo(String name, String displayName, String author, InterfaceAlignment alignment) {
     this.name = name;
     this.displayName = displayName;
     this.author = author;
+    this.alignment = alignment;
   }
 
-  public String getName() {
+  public String name() {
     return name;
   }
 
-  public String getDisplayName() {
+  public String displayName() {
     return displayName;
   }
 
-  public String getAuthor() {
+  public String author() {
     return author;
   }
 
-  public MapStatus getStatus() {
+  public InterfaceAlignment alignment() {
+    return alignment;
+  }
+
+  public MapStatus status() {
     return status;
   }
 

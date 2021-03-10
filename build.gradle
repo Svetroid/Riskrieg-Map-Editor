@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.riskrieg'
-version '1.1b'
+version '1.2'
 
 jar {
     sourceCompatibility = JavaVersion.VERSION_14

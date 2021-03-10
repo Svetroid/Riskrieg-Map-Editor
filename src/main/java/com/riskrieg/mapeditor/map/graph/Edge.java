@@ -1,4 +1,4 @@
-package com.riskrieg.mapeditor.map;
+package com.riskrieg.mapeditor.map.graph;
 
 import java.util.Objects;
 

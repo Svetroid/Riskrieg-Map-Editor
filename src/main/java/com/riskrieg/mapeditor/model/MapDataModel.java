@@ -1,8 +1,8 @@
-package com.riskrieg.mapeditor;
+package com.riskrieg.mapeditor.model;
 
-import com.riskrieg.mapeditor.map.Edge;
-import com.riskrieg.mapeditor.map.MapData;
-import com.riskrieg.mapeditor.map.Territory;
+import com.riskrieg.mapeditor.map.graph.Edge;
+import com.riskrieg.mapeditor.map.graph.MapData;
+import com.riskrieg.mapeditor.map.graph.Territory;
 import com.riskrieg.mapeditor.util.GsonUtil;
 import java.util.HashSet;
 import java.util.Optional;
@@ -42,19 +42,18 @@ public class MapDataModel {
     return finishedTerritories;
   }
 
-  public Optional<Territory> getSelected() {
-    return Optional.ofNullable(selected);
-  }
-
   public Set<Territory> getSelectedNeighbors() {
     return selectedNeighbors;
+  }
+
+  public Optional<Territory> getSelected() {
+    return Optional.ofNullable(selected);
   }
 
   public void select(Territory selected) {
     this.selected = selected;
     if (selected != null) {
       selectedNeighbors.addAll(Graphs.neighborListOf(graph, selected));
-//      selectedNeighbors.addAll(graph.getNeighbors(selected));
     }
   }
 

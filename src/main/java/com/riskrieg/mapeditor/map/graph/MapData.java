@@ -1,10 +1,10 @@
-package com.riskrieg.mapeditor.map;
+package com.riskrieg.mapeditor.map.graph;
 
 import java.util.Objects;
 import java.util.Set;
 import org.jgrapht.Graph;
 
-public class MapData { // TODO: Make into a record when Java 16 comes out.
+public class MapData { // TODO: Turn into Record in Java 16
 
   private final Set<Territory> vertices;
   private final Set<Edge> edges;
